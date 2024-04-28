@@ -1,0 +1,13 @@
+digraph {
+	A [label="AI Facial Recognition on Low-Power Image Processing"]
+	B [label="Eigenfaces Method"]
+	C [label="Convolutional Neural Networks (CNN)"]
+	D [label="A Face Recognition System Based on Eigenfaces Method
+(Müge Çarıkçı, Figen Özen, 2012)"]
+	E [label="MS-Celeb-1M: A Dataset and Benchmark for Large-Scale Face Recognition
+(Yandong Guo et al., Microsoft Research)"]
+	A -> B [label="Uses PCA"]
+	A -> C [label="Uses deep learning"]
+	B -> D [label="Study Example"]
+	C -> E [label="Study Example"]
+}
