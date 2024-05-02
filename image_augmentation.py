@@ -28,7 +28,7 @@ save_path = './input_dataset/'
 os.makedirs(save_path, exist_ok=True)
 
 persons = ['Adham_Allam', 'Dua_Lipa', 'Henry_Cavil', 'Scarelett_Johansson']
-num_augmentations_per_image = 14  # Number of augmented versions of each original image
+num_augmentations_per_image = 4  # Number of augmented versions of each original image
 all_images = []
 all_labels = []
 
@@ -45,7 +45,7 @@ for person_index, person in enumerate(persons):  # Start index at 1 for labels
 all_images_array = np.array(all_images).reshape(-1, 64, 64)
 
 # Save the arrays of images and labels
-np.save(os.path.join(save_path, 'allam_training.npy'), all_images_array)
-np.save(os.path.join(save_path, 'allam_targets.npy'), np.array(all_labels))
+np.save(os.path.join(save_path, 'allam_training_200.npy'), all_images_array)
+np.save(os.path.join(save_path, 'allam_targets_200.npy'), np.array(all_labels))
 
 print(f"Augmentation completed successfully! {len(all_images_array)} images and labels saved.")

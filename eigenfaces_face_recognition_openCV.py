@@ -10,13 +10,16 @@ import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
 
+import matplotlib.patches as patches
+
+
 
 
 # Load your dataset
-faces_image = np.load('./input_dataset/allam_training.npy').astype(np.float32)
+faces_image = np.load('./input_dataset/allam_training_200.npy').astype(np.float32)
 faces_image /= 255.0  # Normalize the data
 
-faces_target = np.load('./input_dataset/allam_targets.npy')
+faces_target = np.load('./input_dataset/allam_targets_200.npy')
 
 # Flatten images
 faces_data = faces_image.reshape(faces_image.shape[0], -1)  # Flatten each 64x64 image to 4096
@@ -63,7 +66,7 @@ class SimpleNN(Model):
         return cls(**config)
 
 # Constants
-n_components = 120
+n_components = 50
 num_classes = np.unique(faces_target).shape[0]
 
 # Initialize PCA and the neural network
@@ -71,10 +74,12 @@ pca_model = PCA_TF(n_components)
 nn_model = SimpleNN(num_classes)
 
 # Prepare data
-X_train, X_test, y_train, y_test = train_test_split(faces_data, faces_target, test_size=0.20, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(faces_data, faces_target, test_size=0.20, random_state=22)
 
 # Fit PCA on training data
 pca_model.fit(X_train)
+
+print("pca model result :",pca_model.components)
 
 # Transform data using PCA
 X_train_pca = pca_model.transform(X_train)
@@ -105,77 +110,75 @@ print("Confusion Matrix:")
 print(confusion_matrix(y_test, y_pred_labels))
 
 
-# # Assuming your model is compiled and ready for conversion
-# # Define the input shape as per your model's requirements
-# # Define the directory to save the model
-# model_dir = './tensorflow_models'
-# os.makedirs(model_dir, exist_ok=True)  # Ensure the directory exists
+# Convert tensor to a NumPy array
+components_np = pca_model.components.numpy()
+components_np = pca_model.components.numpy()
 
-# model_path = os.path.join(model_dir, 'nn_model')
-# nn_model.export(model_path)  # Save the model in TensorFlow SavedModel format
-# print(f"Model saved successfully at: {model_path}")
+# Assuming 'pca_model' is your trained PCA instance with 120 components
+transformation_matrix = components_np.T  # Transpose of the matrix
+mean_vector = pca_model.mean # Shape should be (4096,)
 
-# converter = tf.lite.TFLiteConverter.from_saved_model(model_path)
-# tflite_model = converter.convert()
+# print("transformation_matrix is  : ", transformation_matrix.shape)
+# print("mean vector  : ",mean_vector)
 
-# # Save the TensorFlow Lite model to a file
-# tflite_path = os.path.join(model_dir, 'nn_model.tflite')
-# with open(tflite_path, 'wb') as f:
-#     f.write(tflite_model)
-# print(f"TensorFlow Lite model saved successfully at: {tflite_path}")
-# Load the TensorFlow Lite model and allocate tensors
-# interpreter = tf.lite.Interpreter(model_path="./tensorflow_models/nn_model.tflite")
-# interpreter.allocate_tensors()
+# np.savetxt('transformation_matrix.csv', transformation_matrix, delimiter=',')
+# np.savetxt('mean_vector.csv', mean_vector, delimiter=',')
 
-# # Get input and output details
-# input_details = interpreter.get_input_details()
-# output_details = interpreter.get_output_details()
+# Convert the TensorFlow Keras model to TensorFlow Lite
+converter = tf.lite.TFLiteConverter.from_keras_model(nn_model)
+tflite_model = converter.convert()
 
-# # Assuming X_test_pca is preprocessed exactly as it was during training
-# # Convert X_test_pca to a TensorFlow tensor if it's not already one
-# if not isinstance(X_test_pca, tf.Tensor):
-#     X_test_pca = tf.convert_to_tensor(X_test_pca, dtype=tf.float32)
+# Save the TensorFlow Lite model to disk
+tflite_model_path = "./tensorflow_models/nn_model_200.tflite"
+with open(tflite_model_path, 'wb') as f:
+    f.write(tflite_model)
 
-# # Reshape the tensor to the required input shape for the model
-# test_input = tf.reshape(X_test_pca[0], [1, -1])
 
-# # Set the tensor to the input of the model
-# interpreter.set_tensor(input_details[0]['index'], test_input)
 
-# # Run the model on the input data
-# interpreter.invoke()
 
-# # Extract the output tensor
-# output_data = interpreter.get_tensor(output_details[0]['index'])
-# print("Inference Result:", output_data)
+
 
 def get_class_name(output_data):
     class_mapping = {
-        1: "Adham_Allam",
-        2: "Dua_Lipa",
-        3: "Henry_Cavill",
-        4: "Scarlett_Johansson",
+        0: "Adham_Allam",
+        1: "Dua_Lipa",
+        2: "Henry_Cavill",
+        3: "Scarlett_Johansson",
         # Add more mappings if needed
     }
     # Find the index of the class with the highest probability
-    max_index = np.argmax(output_data)
+    max_index = np.argmax(output_data[0])
+    print("max_index : ",max_index)
+    max_value = output_data[0][max_index]
+    print("max value : ",max_value)
+
     
-    # Check if the index corresponds to a class in the mapping
-    if max_index + 1 in class_mapping:
-        return class_mapping[max_index + 1]
-    else:
+    # Check if the maximum confidence score is less than 0.8
+    if max_value < 0.8:
         return "Unknown"
+    else:
+        if max_index in class_mapping:
+            return class_mapping[max_index]
+        else:
+            return "Unknown"
 # Path to your trained PCA model or configuration to initialize it
 # Assuming pca is already loaded or defined elsewhere
 
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # Load the image
-image_path = 'sc3.jpg'
+image_path = 'cam2.jpg'
 image = cv2.imread(image_path)
 
 # Convert the image to grayscale
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+fig, ax = plt.subplots(figsize=(8, 6))  # figsize is in inches
+
+# Convert color space from BGR (OpenCV) to RGB (matplotlib)
+image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+# Display the image
+ax.imshow(image_rgb)
 
 # Detect faces in the image
 faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
@@ -201,7 +204,7 @@ for (x, y, w, h) in faces:
     test_input = tf.convert_to_tensor(pca_transformed_image, dtype=tf.float32)
 
     # Load your TensorFlow Lite model and prepare for inference
-    interpreter = tf.lite.Interpreter(model_path="./tensorflow_models/nn_model.tflite")
+    interpreter = tf.lite.Interpreter(model_path="./tensorflow_models/nn_model_200.tflite")
     interpreter.allocate_tensors()
 
     # Get input and output details
@@ -217,21 +220,26 @@ for (x, y, w, h) in faces:
     # Extract the output tensor
     output_data = interpreter.get_tensor(output_details[0]['index'])
     print("Inference Result:", output_data)
+    print("Output Data:", output_data)
+    print("Shape of Output Data:", output_data.shape)
     class_name = get_class_name(output_data)
 
     # # Display the cropped face
     # cv2.imshow('Cropped Face', resized_face)
     # cv2.waitKey(0)
-    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+    # cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
-    # Display the predicted class name above the image
-    cv2.putText(image,class_name, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+    # # Display the predicted class name above the image
+    # cv2.putText(image,class_name, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+    rect = patches.Rectangle((x, y), w, h, linewidth=2, edgecolor='r', facecolor='none')
+    ax.add_patch(rect)
+
+    # Display the predicted class name above the rectangle
+    ax.text(x, y - 10, class_name, color='red', fontsize=12, weight='bold')
 
     # Display the cropped face
     # cv2.imshow('Cropped Face', resized_face)
     cv2.waitKey(0)
-cv2.imshow('Original Image', image)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
 
-cv2.destroyAllWindows()
+plt.axis('off')  # Hide axes
+plt.show()
