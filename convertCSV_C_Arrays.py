@@ -22,18 +22,18 @@ def convert_to_c_array(filename, var_name, is_2d=True):
     return c_array
 
 # Paths to your CSV files
-matrix_filename = 'transformation_matrix.csv'
-mean_filename = 'mean_vector.csv'
+matrix_filename = 'transformation_matrix_400.csv'
+mean_filename = 'mean_vector_400.csv'
 
 # Generate C arrays
 matrix_var_name = 'pca_transformation_matrix'
 mean_var_name = 'pca_mean_vector'
-matrix_shape = (120, 4096)  # 120 components, each of 4096 elements
+matrix_shape = (100, 4096)  # 120 components, each of 4096 elements
 mean_shape = (4096,)         # Mean vector is a 1D array with 4096 elements
 
 matrix_c_array = convert_to_c_array(matrix_filename, matrix_var_name, is_2d=True)
 mean_c_array = convert_to_c_array(mean_filename, mean_var_name, is_2d=False)
 
 # Save the arrays to a .h file
-with open('pca_parameters.h', 'w') as f:
+with open('pca_parameters_400.h', 'w') as f:
     f.write(matrix_c_array + "\n" + mean_c_array)
